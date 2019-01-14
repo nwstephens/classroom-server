@@ -116,7 +116,7 @@ server <- function(input, output, session) {
     
     div(
       tags$br(),
-      textInput("text_0", "Enter the password your instructor provided"),
+      textInput("text_0", "Workshop identifier"),
       actionButton("submit_0", "Submit")
     )
     
@@ -168,38 +168,23 @@ server <- function(input, output, session) {
     class_name <- classroom_record %>% pull(name)
     class_desc <- classroom_record %>% pull(description)
     
-    if (!is.null(active_cookie())) {
-      showModal(
-        modalDialog(
-          div(
-            p("We noticed that you have been here before. Would you like to proceed automatically?")
-          )
-          , title = "Skip this step"
-          , footer = div(actionButton("no_skip_1", "No"), actionButton("yes_skip_1", "Yes"))
-        )
-      )
-    }
-    
     div(
       h2(glue::glue("{class_name}")),
       div(class_desc %>% protect_empty(NULL) %>% HTML()),
-      textInput("name_1", "Name"),
+      textInput("name_1", "Username"),
       textInput("email_1", "Email"),
-      materialSwitch(inputId = "here_before_1", 
-                     label = textOutput("here_before_1_label"), 
-                     status = "success"),
+      checkboxInput(inputId = "here_before_1", 
+                    label = "First time logging in",
+                    value = TRUE, width = NULL),
       actionButton("submit_1", "Submit")
     )
     
   })
   
-  output$here_before_1_label <- renderText(ifelse(input$here_before_1, 
-                                                  "Access my previous server credentials", 
-                                                  "Create new server credentials"))
-  
   observeEvent(input$no_skip_1, {
     removeModal()
   })
+  
   observeEvent(input$yes_skip_1, {
     removeModal()
     
@@ -234,30 +219,13 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$submit_1, {
-    log_event(con, schema, prefix, "Submitted name and email", 
+    log_event(con, schema, prefix, "Submitted username and email", 
               session = session$token,
               classroomid = active_class(), 
               cookie = active_cookie(),
-              other = glue::glue("Name: {input$name_1}; Email: {input$email_1}")
+              other = glue::glue("Username: {input$name_1}; Email: {input$email_1}")
     )
-    showModal(
-      modalDialog(
-        div(
-          p("This application uses cookies to ensure 
-                      that you have a good user experience. 
-                      Do you give your consent to do so?")
-        )
-        , title = "Your Information"
-        , footer = div(actionButton("no_modal_1", "No"), actionButton("yes_modal_1", "Yes"))
-      )
-    )
-    
-  })
-  
-  
-  observeEvent(input$yes_modal_1, {
-    removeModal()
-    
+
     input_email <- input$email_1 %>% 
       stringr::str_to_lower() %>%
       stringr::str_trim()
@@ -316,7 +284,7 @@ server <- function(input, output, session) {
       
       state(2)
     } else if ( 
-      !input$here_before_1 || 
+      input$here_before_1 || 
       (curr_student %>% tally() %>% pull(n) > 0 &&
        curr_student %>% inner_join(claim, by = c("studentid","classroomid")) %>% tally() %>% pull(n) == 0 
       )
@@ -331,7 +299,7 @@ server <- function(input, output, session) {
           session=session$token, 
           classroomid = active_class(), 
           cookie = active_cookie(),
-          other = glue::glue("Name: {input$name_1}; Email: {input$email_1}")
+          other = glue::glue("Username: {input$name_1}; Email: {input$email_1}")
         )
         showNotification(
           "Sorry, new instances are not available at this time. Please contact your TA",
@@ -345,7 +313,7 @@ server <- function(input, output, session) {
           session=session$token, 
           classroomid = active_class(), 
           cookie = active_cookie(),
-          other = glue::glue("Name: {input$name_1}; Email: {input$email_1}")
+          other = glue::glue("Username: {input$name_1}; Email: {input$email_1}")
         )
         if (curr_student %>% tally() %>% pull(n) == 0) {
           # add student record
@@ -436,7 +404,7 @@ server <- function(input, output, session) {
                 session = session$token,
                 classroomid = active_class(), 
                 cookie = active_cookie(),
-                other = glue::glue("Name: {input$name_1}; Email: {input$email_1}")
+                other = glue::glue("Username: {input$name_1}; Email: {input$email_1}")
       )
       showNotification(
         "Sorry, your email was not found in the classroom. 
@@ -619,7 +587,7 @@ server <- function(input, output, session) {
       modalDialog(
         div(
           p("Enter classroom information"),
-          textInput("new_class_name", "Name"),
+          textInput("new_class_name", "Username"),
           textInput("new_class_password", "Class Password"),
           textAreaInput("new_class_description", "Description")
         )
